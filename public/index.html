@@ -11,12 +11,12 @@
 </head>
 <body>
   <main>
-    <header><h1>九九乘法</h1><span>1–9 练习</span></header>
+    <header><h1>九九乘法</h1><button id="sound-toggle" type="button" aria-label="声音" aria-pressed="false" hidden>声音：关</button></header>
     <section class="practice" aria-label="乘法练习">
       <div class="question-zone">
         <div class="card-top"><span id="round-label">准备开始</span><span id="phase-label">等你开始</span></div>
         <div class="equation" aria-label="题目"><span id="factor-a">?</span><span class="symbol">×</span><span id="factor-b">?</span><span class="symbol">=</span><span id="result-value">?</span></div>
-        <div class="question-bottom"><p id="question-hint">点击开始练习</p><button id="replay" disabled>再听一遍</button></div>
+        <div class="question-bottom"><p id="question-hint">点击开始练习</p><button id="replay" disabled hidden>再听一遍</button></div>
       </div>
       <div class="feedback" id="feedback" role="status" aria-live="polite">
         <strong id="feedback-title">准备好了吗？</strong>

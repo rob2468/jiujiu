@@ -11,7 +11,8 @@ body { padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-are
 main { width: 100%; max-width: 520px; margin: auto; padding: 12px 16px 24px; }
 header { display: flex; justify-content: space-between; align-items: center; min-height: 44px; margin-bottom: 10px; }
 h1 { font-size: 22px; margin: 0; }
-header > span { font-size: 14px; color: #596b78; }
+#sound-toggle { min-height: 44px; padding: 8px 14px; font-size: 14px; color: #596b78; background: #e4e9ef; }
+#sound-toggle[aria-pressed="true"] { background: #dcecff; color: #1855a4; }
 button, input { font: inherit; }
 button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; border: 0; border-radius: 12px; font-weight: 650; min-height: 52px; }
@@ -23,7 +24,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid #2563eb; outline-
 .equation { display: flex; justify-content: center; align-items: center; gap: clamp(8px, 3vw, 18px); font-size: clamp(44px, 13vw, 66px); font-weight: 750; line-height: 1.25; margin: 12px 0 4px; font-variant-numeric: tabular-nums; }
 .symbol { font-size: .65em; font-weight: 400; }
 .result-value { min-width: 1.1em; text-align: center; color: #1855a4; }
-.question-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.question-bottom { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 44px; }
 #question-hint { font-size: 13px; margin: 0; color: #3e5a72; }
 #replay { min-height: 44px; padding: 8px 10px; font-size: 14px; background: transparent; color: #1855a4; white-space: nowrap; }
 .feedback { min-height: 72px; padding: 12px 2px; overflow-wrap: anywhere; }

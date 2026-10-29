@@ -1,9 +1,10 @@
 import {parseAnswer, makeDeck, assess} from './core.js';
 const $ = id => document.getElementById(id);
 const synthesis = window.speechSynthesis;
-const state = {phase:'idle', question:null, deck:[], attempts:0, round:0, correct:0, completed:0, streak:0, resolved:false};
+const soundAvailable = !!synthesis && typeof synthesis.speak==='function' && typeof synthesis.cancel==='function' && typeof synthesis.getVoices==='function' && typeof window.SpeechSynthesisUtterance==='function';
+const state = {phase:'idle', question:null, deck:[], attempts:0, round:0, correct:0, completed:0, streak:0, resolved:false, soundAvailable, soundEnabled:false, utterance:null};
 const phaseNames = {idle:'等你开始',ready:'随时可以作答',paused:'已暂停'};
-function stopSpeech(){try{synthesis?.cancel();}catch{}}
+function stopSpeech(){state.utterance=null;try{synthesis?.cancel();}catch{}}
 function feedback(title, detail, type=''){$('feedback-title').textContent=title;$('feedback-detail').textContent=detail;$('feedback').className=`feedback ${type}`;}
 function render(){
  const active=state.phase!=='idle'&&state.phase!=='paused';
@@ -15,7 +16,11 @@ function render(){
  $('factor-a').textContent=state.question?.a??'?';$('factor-b').textContent=state.question?.b??'?';
  $('result-value').textContent=state.resolved?state.question.a*state.question.b:'?';$('result-value').className=`result-value ${state.resolved?'revealed':''}`;
  $('start-text').textContent=state.phase==='idle'?'开始练习':state.phase==='paused'?'继续练习':'暂停一下';$('start-icon').textContent=active?'Ⅱ':'▶';
- $('replay').disabled=!state.question||!active||!synthesis||!window.SpeechSynthesisUtterance;
+ $('sound-toggle').hidden=!state.soundAvailable;
+ $('sound-toggle').textContent=state.soundEnabled?'声音：开':'声音：关';
+ $('sound-toggle').setAttribute('aria-pressed',String(state.soundEnabled));
+ $('replay').hidden=!state.soundAvailable||!state.soundEnabled;
+ $('replay').disabled=!state.question||!active||!state.soundEnabled;
  $('answer').disabled=!canAnswer;$('submit').disabled=!active;
  $('submit').textContent=state.resolved?'下一题':'提交';
  document.querySelectorAll('#keypad button').forEach(b=>b.disabled=!canAnswer);
@@ -25,16 +30,24 @@ function render(){
 }
 function say(text){
  stopSpeech();
- if(!synthesis||!window.SpeechSynthesisUtterance)return;
+ if(!state.soundAvailable||!state.soundEnabled)return;
  // Speech never advances questions or changes input availability.
  try{
    const utterance=new SpeechSynthesisUtterance(text);utterance.lang='zh-CN';utterance.rate=.88;utterance.pitch=1.05;
    const voices=synthesis.getVoices();const voice=voices.find(v=>/^zh[-_]CN/i.test(v.lang))||voices.find(v=>/^zh/i.test(v.lang));if(voice)utterance.voice=voice;
+   state.utterance=utterance;
+   utterance.onend=()=>{if(state.utterance===utterance)state.utterance=null;};
+   utterance.onerror=event=>{
+     if(state.utterance!==utterance||['canceled','interrupted'].includes(event.error))return;
+     state.soundEnabled=false;
+     if(['synthesis-unavailable','language-unavailable','voice-unavailable','audio-hardware'].includes(event.error))state.soundAvailable=false;
+     stopSpeech();render();
+   };
    synthesis.speak(utterance);
- }catch{}
+ }catch{state.soundEnabled=false;state.soundAvailable=false;stopSpeech();render();}
 }
 function askCurrent(){
- state.phase='ready';feedback('请输入答案','不用等朗读，输入后即可提交。');render();
+ state.phase='ready';feedback('请输入答案','输入后即可提交。');render();
  say(`${state.question.a}乘以${state.question.b}等于多少？`);
 }
 function nextQuestion(){
@@ -72,6 +85,14 @@ $('start').addEventListener('click',()=>{
 });
 $('replay').addEventListener('click',()=>{
  if(state.phase==='ready'&&state.question)say(state.resolved?`正确答案是${state.question.a*state.question.b}。`:`${state.question.a}乘以${state.question.b}等于多少？`);
+});
+$('sound-toggle').addEventListener('click',()=>{
+ if(!state.soundAvailable)return;
+ state.soundEnabled=!state.soundEnabled;
+ stopSpeech();render();
+ if(state.soundEnabled&&state.phase==='ready'&&state.question){
+   say(state.resolved?`正确答案是${state.question.a*state.question.b}。`:`${state.question.a}乘以${state.question.b}等于多少？`);
+ }
 });
 $('answer-form').addEventListener('submit',e=>{
  e.preventDefault();
