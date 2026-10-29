@@ -1,6 +1,10 @@
 import {parseAnswer, makeDeck, assess} from './core.js';
 const $ = id => document.getElementById(id);
 const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const isWeChat = /MicroMessenger/i.test(window.navigator?.userAgent || '');
+const browserVoiceHint = isWeChat
+ ? '微信内语音可能不可用。请点右上角“…”选择在浏览器中打开；若没有此选项，复制链接到 Safari。也可以直接用数字键盘练习。'
+ : '当前浏览器没有提供语音识别功能。请换支持语音的浏览器打开，或使用数字键盘练习。';
 const synthesis = window.speechSynthesis;
 const state = {phase:'idle', question:null, deck:[], attempts:0, round:0, correct:0, completed:0, streak:0, token:0, timers:new Set(), recognition:null, speaking:false, resolved:false, microphoneBlocked:false};
 const phaseNames = {idle:'等你开始',asking:'正在读题',ready:'轮到你啦',listening:'正在听答案',feedback:'一起记住',paused:'已暂停'};
@@ -24,7 +28,7 @@ function render(){
  $('result-value').textContent=state.resolved?state.question.a*state.question.b:'?';$('result-value').className=`result-value ${state.resolved?'revealed':''}`;
  $('start-text').textContent=state.phase==='idle'?'开始练习':state.phase==='paused'?'继续练习':'暂停一下';$('start-icon').textContent=active?'Ⅱ':'▶';
  $('replay').disabled=!state.question||!active||state.resolved||['asking','feedback'].includes(state.phase);
- $('listen').disabled=!Recognition||state.microphoneBlocked||!canAnswer;
+ $('listen').disabled=state.phase!=='idle'&&!canAnswer;
  $('listen').className=`mic-button ${state.phase==='listening'?'active':''}`;$('listen-text').textContent=state.phase==='listening'?(state.audioStarted?'正在听…':'连接中…'):'说答案';
  $('listen').setAttribute('aria-label',state.phase==='listening'?'停止听答案':'用麦克风回答');
  $('answer').disabled=!canAnswer;$('submit').disabled=!canAnswer;
@@ -62,7 +66,10 @@ function nextQuestion(){
  state.question=state.deck.pop();state.attempts=0;state.resolved=false;state.round++;askCurrent();
 }
 function listen(){
- if(!Recognition||state.microphoneBlocked||!['ready','listening'].includes(state.phase)||state.speaking||state.resolved)return;
+ if(!Recognition){feedback('当前浏览器无法语音答题',browserVoiceHint);return;}
+ if(state.microphoneBlocked){feedback('需要先允许麦克风权限','请在浏览器的网站权限中允许麦克风，再刷新页面。也可以使用数字键盘继续。');return;}
+ if(state.phase==='idle'){feedback('先开始练习，再说答案','点击“开始练习”，读题结束后再点“说答案”。');return;}
+ if(!['ready','listening'].includes(state.phase)||state.speaking||state.resolved)return;
  if(state.phase==='listening'){stopRecognition();state.phase='ready';feedback('麦克风已关闭','可以点击“说答案”重试，或者输入数字。');render();return;}
  stopRecognition();const token=state.token;let gotResult=false;let failed=false;
  let recognition;
@@ -181,6 +188,11 @@ $('auto-voice').addEventListener('change',()=>{
 });
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&!['idle','paused'].includes(state.phase))pause();});
 window.addEventListener('pagehide',cancelPending);
-if(!Recognition){$('auto-voice').checked=false;$('auto-voice').disabled=true;$('support-note').textContent='这个浏览器暂不支持语音识别。朗读与数字键盘仍可使用；也可尝试在支持语音的浏览器中打开。';}
+if(isWeChat||!Recognition){
+ $('auto-voice').checked=false;
+ $('voice-help').hidden=false;$('voice-help').textContent=browserVoiceHint;
+ $('support-note').textContent=browserVoiceHint;
+}
+if(!Recognition){$('auto-voice').disabled=true;}
 if(!synthesis)$('support-note').textContent+=' 当前浏览器也不支持自动朗读，请看题作答。';
 render();

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import {parseAnswer, makeDeck, assess} from '../public/core.js';
-function setup({recognition=true,speech=true}={}) {
+function setup({recognition=true,speech=true,userAgent=''}={}) {
  let now=0,nextId=0;const timers=new Map();
  class Element {constructor(){this.children=[];this.value='';this.checked=false;this.disabled=false;this.dataset={};this.events={};this.style={setProperty(){}};} addEventListener(n,f){this.events[n]=f;} setAttribute(n,v){this[n]=v;} replaceChildren(...c){this.children=c;} append(c){this.children.push(c);} }
  const nodes=new Map();const get=id=>{if(!nodes.has(id))nodes.set(id,new Element());return nodes.get(id);};
@@ -12,6 +12,7 @@ function setup({recognition=true,speech=true}={}) {
  const synth={current:null,speaking:false,cancel(){this.current=null;this.speaking=false;},getVoices(){return [{lang:'zh-CN'}];},speak(u){assert.equal(Rec.current?.running??false,false,'recognition must stop before speaking');this.current=u;this.speaking=true;}};
  class Rec {static current=null;constructor(){Rec.current=this;} start(){assert.equal(synth.speaking,false,'synthesis must finish before listening');this.running=true;this.onstart?.();} abort(){this.running=false;} answer(text){this.running=false;const result=[{transcript:text}];result.isFinal=true;this.onresult?.({resultIndex:0,results:[result]});} }
  const window={SpeechRecognition:recognition?Rec:undefined,speechSynthesis:speech?synth:undefined,SpeechSynthesisUtterance:speech?class {constructor(text){this.text=text;}}:undefined,matchMedia:()=>({matches:true}),addEventListener(){}};
+ window.navigator={userAgent};
  const context={document,window,SpeechSynthesisUtterance:window.SpeechSynthesisUtterance,parseAnswer,makeDeck,assess,setTimeout(fn,ms){const id=++nextId;timers.set(id,{fn,at:now+ms});return id;},clearTimeout(id){timers.delete(id);},console};
  const source=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*;\n/,'')+'\nglobalThis.appTest={state,nextQuestion,pause,listen,submitAnswer};';
  vm.runInNewContext(source,context);
@@ -35,7 +36,8 @@ test('unclear recognition is not an incorrect attempt',()=>{
  const t=setup();t.nextQuestion();t.finishSpeech();t.Rec.current.answer('我不知道');assert.equal(t.state.attempts,0);assert.equal(t.state.phase,'ready');
 });
 test('permission denial falls back without spending an attempt',()=>{
- const t=setup();t.nextQuestion();t.finishSpeech();t.Rec.current.onerror({error:'not-allowed'});assert.equal(t.state.attempts,0);assert.equal(t.state.phase,'ready');assert.equal(t.get('auto-voice').checked,false);assert.equal(t.get('answer').disabled,false);assert.equal(t.get('listen').disabled,true);
+ const t=setup();t.nextQuestion();t.finishSpeech();t.Rec.current.onerror({error:'not-allowed'});assert.equal(t.state.attempts,0);assert.equal(t.state.phase,'ready');assert.equal(t.get('auto-voice').checked,false);assert.equal(t.get('answer').disabled,false);assert.equal(t.get('listen').disabled,false);
+ t.listen();assert.equal(t.get('feedback-title').textContent,'需要先允许麦克风权限');
 });
 test('pause cancels speech, recognition, and delayed stale results',()=>{
  const t=setup();t.nextQuestion();t.finishSpeech();const stale=t.Rec.current.onresult;const answer=t.state.question.a*t.state.question.b;t.pause();const r=[{transcript:String(answer)}];r.isFinal=true;stale({resultIndex:0,results:[r]});t.tick(50000);assert.equal(t.state.phase,'paused');assert.equal(t.state.correct,0);assert.equal(t.state.round,1);assert.equal(t.Rec.current.running,false);
@@ -80,4 +82,16 @@ test('network errors stop recognition and automatic retries without blocking man
 test('no-match event releases the microphone without spending an attempt',()=>{
  const t=setup();t.nextQuestion();t.finishSpeech();const r=t.Rec.current;r.onnomatch();
  assert.equal(r.running,false);assert.equal(t.state.phase,'ready');assert.equal(t.state.attempts,0);
+});
+test('WeChat without recognition provides actionable feedback instead of a disabled button',()=>{
+ const t=setup({recognition:false,userAgent:'iPhone MicroMessenger/8.0'});
+ assert.equal(t.get('voice-help').hidden,false);assert.equal(t.get('listen').disabled,false);
+ t.listen();assert.ok(t.get('feedback-detail').textContent.includes('Safari'));
+ t.nextQuestion();t.finishSpeech();assert.equal(t.state.phase,'ready');
+ t.listen();assert.equal(t.state.attempts,0);assert.equal(t.get('feedback-title').textContent,'当前浏览器无法语音答题');
+});
+test('WeChat does not automatically start an exposed but potentially unusable service',()=>{
+ const t=setup({userAgent:'iPhone MicroMessenger/8.0'});t.nextQuestion();t.finishSpeech();
+ assert.equal(t.Rec.current,null);assert.equal(t.state.phase,'ready');
+ t.listen();assert.equal(t.state.phase,'listening');
 });
