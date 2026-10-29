@@ -23,7 +23,7 @@ function render(){
  $('phase-label').className=`phase-label ${state.phase}`;
  const phaseText=state.phase==='listening'&&!state.audioStarted?'正在连接语音':phaseNames[state.phase];
  $('phase-label').replaceChildren(Object.assign(document.createElement('i'),{}),document.createTextNode(` ${phaseText}`));
- $('question-hint').textContent=state.phase==='idle'?'今天，也来练习一下吧':state.phase==='paused'?'休息一下，准备好再继续':state.resolved?'把这道题记在心里':'想一想，等于多少？';
+ $('question-hint').textContent=state.phase==='idle'?'点击开始练习':state.phase==='paused'?'练习已暂停':state.resolved?'正确答案':'等于多少？';
  $('factor-a').textContent=state.question?.a??'?';$('factor-b').textContent=state.question?.b??'?';
  $('result-value').textContent=state.resolved?state.question.a*state.question.b:'?';$('result-value').className=`result-value ${state.resolved?'revealed':''}`;
  $('start-text').textContent=state.phase==='idle'?'开始练习':state.phase==='paused'?'继续练习':'暂停一下';$('start-icon').textContent=active?'Ⅱ':'▶';
@@ -36,7 +36,6 @@ function render(){
  const left=3-state.attempts;$('attempt-count').textContent=`${left} 次`;$('chances').setAttribute('aria-label',`剩余${left}次机会`);
  [...$('chances').children].forEach((c,i)=>c.className=i<left?'':'used');
  $('correct-count').textContent=state.correct;$('completed-count').textContent=state.completed;$('streak-count').textContent=state.streak;
- $('progress-note').textContent=state.completed?`已经完成 ${state.completed} 道题${state.streak>=3?`，连续答对 ${state.streak} 题，太棒了！`:'，每一次思考都算数。'}`:'从第一道题开始，慢慢来。';
 }
 function say(text, done, token=state.token){
  stopRecognition();
@@ -143,12 +142,6 @@ function listen(){
    stopRecognition();state.phase='ready';feedback('请再点一次“说答案”','浏览器没有启动语音。也可以用数字键盘作答。');render();
  }
 }
-function celebrate(){
- if(window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;
- const box=$('confetti');box.replaceChildren();
- for(let i=0;i<24;i++){const bit=document.createElement('i');bit.style.left=`${20+Math.random()*60}%`;bit.style.background=['#e7bc74','#87ad7f','#df9d7c','#ccd5a0'][i%4];bit.style.animationDelay=`${Math.random()*.15}s`;bit.style.setProperty('--drift',`${(Math.random()-.5)*300}px`);box.append(bit);}
- later(()=>box.replaceChildren(),2000);
-}
 function submitAnswer(answer,transcript=null){
  if(!['ready','listening'].includes(state.phase)||state.resolved)return;
  const outcome=assess(state.question,answer,state.attempts);
@@ -157,7 +150,7 @@ function submitAnswer(answer,transcript=null){
  const heard=transcript?`听到“${transcript.slice(0,45)}”。`:'';
  if(outcome.kind==='correct'){
    state.resolved=true;state.correct++;state.completed++;state.streak++;
-   feedback('答对啦，真棒！',`${heard}${state.question.a} × ${state.question.b} = ${answer}，准备下一题。`,'success','✓');render();celebrate();
+   feedback('答对了',`${heard}${state.question.a} × ${state.question.b} = ${answer}，准备下一题。`,'success');render();
    say('恭喜你，答对啦！',()=>later(nextQuestion,900));
  }else if(outcome.kind==='retry'){
    feedback('差一点，再想一想',`${heard}${answer} 还不是答案。还有 ${3-state.attempts} 次机会。`,'retry','↻');render();
