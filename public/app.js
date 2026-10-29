@@ -5,7 +5,11 @@ const synthesis = window.speechSynthesis;
 const state = {phase:'idle', question:null, deck:[], attempts:0, round:0, correct:0, completed:0, streak:0, token:0, timers:new Set(), recognition:null, speaking:false, resolved:false, microphoneBlocked:false};
 const phaseNames = {idle:'等你开始',asking:'正在读题',ready:'轮到你啦',listening:'正在听答案',feedback:'一起记住',paused:'已暂停'};
 function later(fn, ms, token=state.token){const id=setTimeout(()=>{state.timers.delete(id);if(token===state.token)fn();},ms);state.timers.add(id);return id;}
-function stopRecognition(){const r=state.recognition;state.recognition=null;if(r){r.onstart=r.onresult=r.onerror=r.onend=null;try{r.abort();}catch{}}}
+function stopRecognition(){
+ if(state.recognitionTimer){clearTimeout(state.recognitionTimer);state.timers.delete(state.recognitionTimer);state.recognitionTimer=null;}
+ const r=state.recognition;state.recognition=null;state.audioStarted=false;
+ if(r){r.onstart=r.onaudiostart=r.onspeechstart=r.onaudioend=r.onnomatch=r.onresult=r.onerror=r.onend=null;try{r.abort();}catch{}}
+}
 function cancelPending(){state.token++;for(const id of state.timers)clearTimeout(id);state.timers.clear();stopRecognition();state.speaking=false;if(synthesis)synthesis.cancel();}
 function feedback(title, detail, type='', icon='✦'){$('feedback-title').textContent=title;$('feedback-detail').textContent=detail;$('feedback').className=`feedback ${type}`;$('feedback-icon').textContent=icon;}
 function render(){
@@ -13,14 +17,15 @@ function render(){
  const canAnswer=['ready','listening'].includes(state.phase)&&!state.resolved;
  $('round-label').textContent=state.round?`第 ${String(state.round).padStart(2,'0')} 题`:'准备出发';
  $('phase-label').className=`phase-label ${state.phase}`;
- $('phase-label').replaceChildren(Object.assign(document.createElement('i'),{}),document.createTextNode(` ${phaseNames[state.phase]}`));
+ const phaseText=state.phase==='listening'&&!state.audioStarted?'正在连接语音':phaseNames[state.phase];
+ $('phase-label').replaceChildren(Object.assign(document.createElement('i'),{}),document.createTextNode(` ${phaseText}`));
  $('question-hint').textContent=state.phase==='idle'?'今天，也来练习一下吧':state.phase==='paused'?'休息一下，准备好再继续':state.resolved?'把这道题记在心里':'想一想，等于多少？';
  $('factor-a').textContent=state.question?.a??'?';$('factor-b').textContent=state.question?.b??'?';
  $('result-value').textContent=state.resolved?state.question.a*state.question.b:'?';$('result-value').className=`result-value ${state.resolved?'revealed':''}`;
  $('start-text').textContent=state.phase==='idle'?'开始练习':state.phase==='paused'?'继续练习':'暂停一下';$('start-icon').textContent=active?'Ⅱ':'▶';
  $('replay').disabled=!state.question||!active||state.resolved||['asking','feedback'].includes(state.phase);
  $('listen').disabled=!Recognition||state.microphoneBlocked||!canAnswer;
- $('listen').className=`mic-button ${state.phase==='listening'?'active':''}`;$('listen-text').textContent=state.phase==='listening'?'正在听…':'说答案';
+ $('listen').className=`mic-button ${state.phase==='listening'?'active':''}`;$('listen-text').textContent=state.phase==='listening'?(state.audioStarted?'正在听…':'连接中…'):'说答案';
  $('listen').setAttribute('aria-label',state.phase==='listening'?'停止听答案':'用麦克风回答');
  $('answer').disabled=!canAnswer;$('submit').disabled=!canAnswer;
  document.querySelectorAll('#keypad button').forEach(b=>b.disabled=!canAnswer);
@@ -62,12 +67,36 @@ function listen(){
  stopRecognition();const token=state.token;let gotResult=false;let failed=false;
  let recognition;
  try{recognition=new Recognition();}catch{feedback('这次没能打开语音','请使用数字键盘继续，不会扣除机会。');return;}
- state.recognition=recognition;recognition.lang='zh-CN';recognition.continuous=false;recognition.interimResults=false;recognition.maxAlternatives=1;
- state.phase='listening';feedback('正在听，请说出答案','比如“二十四”。没听清不会扣除机会。','', '♪');render();
+ state.recognition=recognition;recognition.lang='zh-CN';recognition.continuous=false;recognition.interimResults=true;recognition.maxAlternatives=1;
+ const current=()=>token===state.token&&state.recognition===recognition;
+ const finishWithoutAnswer=(title,detail)=>{
+   if(!current())return;
+   stopRecognition();state.phase='ready';feedback(title,detail);render();
+ };
+ const deadline=(ms,title,detail)=>{
+   if(state.recognitionTimer){clearTimeout(state.recognitionTimer);state.timers.delete(state.recognitionTimer);}
+   state.recognitionTimer=later(()=>finishWithoutAnswer(title,detail),ms,token);
+ };
+ state.phase='listening';feedback('正在连接麦克风','如浏览器弹出权限请求，请允许；看到“请说出答案”后再开口。');render();
+ deadline(15000,'语音没有启动','点击“说答案”手动重试，或使用数字键盘。这次不扣机会。');
  recognition.onstart=()=>{if(token!==state.token||state.recognition!==recognition){try{recognition.abort();}catch{}}};
+ recognition.onaudiostart=()=>{
+   if(!current())return;
+   state.audioStarted=true;render();
+   feedback('请说出答案','麦克风已启动，比如说“二十四”。','', '♪');
+   deadline(20000,'没有收到识别结果','点击“说答案”重试；若反复出现，请换浏览器或用数字键盘。这次不扣机会。');
+ };
+ recognition.onspeechstart=()=>{if(current())feedback('检测到说话声','正在识别，请稍等。','', '♪');};
+ recognition.onaudioend=()=>{
+   if(!current())return;
+   feedback('正在等待识别结果','麦克风已停止收音，请稍等。');
+   deadline(10000,'语音识别服务没有响应','页面已停止等待。请重试或使用数字键盘，这次不扣机会。');
+ };
+ recognition.onnomatch=()=>finishWithoutAnswer('没有识别出答案','点击“说答案”再试一次，或使用数字键盘。这次不扣机会。');
  recognition.onresult=event=>{
    if(token!==state.token||state.recognition!==recognition||state.speaking||state.phase!=='listening')return;
-   const result=event.results[event.resultIndex??0];if(!result?.isFinal)return;
+   const result=event.results[event.resultIndex??0];if(!result)return;
+   if(!result.isFinal){feedback('正在识别你的答案',`听到“${(result[0]?.transcript??'').slice(0,45)}”，等待确认。`);return;}
    gotResult=true;const transcript=result[0]?.transcript??'';const answer=parseAnswer(transcript);
    stopRecognition();state.phase='ready';render();
    if(answer===null){feedback('没听清数字，再说一次吧',`听到“${transcript.slice(0,45)}”。这次不扣机会，也可以输入数字。`);return;}
@@ -75,11 +104,20 @@ function listen(){
  };
  recognition.onerror=event=>{
    if(token!==state.token||state.recognition!==recognition)return;
-   failed=true;state.phase='ready';state.recognition=null;
-   if(['not-allowed','service-not-allowed'].includes(event.error)){
+   failed=true;stopRecognition();state.phase='ready';
+   if(event.error==='not-allowed'){
      state.microphoneBlocked=true;$('auto-voice').checked=false;
      $('support-note').textContent='麦克风未获允许。请在浏览器的网站权限中开启麦克风后刷新页面；现在可以用数字键盘继续。';
      feedback('用数字键盘，也可以练习','麦克风权限未开启。这次不扣机会。');
+   }else if(event.error==='service-not-allowed'){
+     $('auto-voice').checked=false;
+     feedback('浏览器不允许使用语音识别服务','请在浏览器设置中检查语音权限，或换浏览器打开。这次不扣机会。');
+   }else if(event.error==='network'){
+     $('auto-voice').checked=false;
+     feedback('连接不上语音识别服务','网页能打开不代表语音服务可用。请检查网络，或用数字键盘继续。这次不扣机会。');
+   }else if(event.error==='language-not-supported'){
+     $('auto-voice').checked=false;
+     feedback('当前语音服务不支持中文','请换支持中文识别的浏览器，或用数字键盘继续。这次不扣机会。');
    }else if(event.error==='audio-capture'){
      feedback('没有检测到可用的麦克风','请检查设备，或使用数字键盘。这次不扣机会。');
    }else if(event.error==='no-speech'){
@@ -91,7 +129,7 @@ function listen(){
  };
  recognition.onend=()=>{
    if(token!==state.token||state.recognition!==recognition)return;
-   state.recognition=null;
+   stopRecognition();
    if(!gotResult&&!failed&&state.phase==='listening'){state.phase='ready';feedback('没有听清，机会还在','点击“说答案”再试一次，或者输入答案。');render();}
  };
  try{recognition.start();}catch{

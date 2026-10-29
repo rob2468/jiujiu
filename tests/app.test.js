@@ -46,3 +46,38 @@ test('missing speech APIs still allows keypad practice',()=>{
 test('backgrounding a running session pauses it',()=>{
  const t=setup();t.nextQuestion();t.document.hidden=true;t.document.events.visibilitychange();assert.equal(t.state.phase,'paused');t.tick(50000);assert.equal(t.state.round,1);
 });
+test('recognition startup cannot remain stuck or accept a late result',()=>{
+ const t=setup();t.nextQuestion();t.finishSpeech();
+ const r=t.Rec.current;const stale=r.onresult;
+ assert.equal(t.get('feedback-title').textContent,'正在连接麦克风');
+ t.tick(15000);
+ assert.equal(t.state.phase,'ready');assert.equal(r.running,false);assert.equal(t.state.attempts,0);
+ const result=[{transcript:String(t.state.question.a*t.state.question.b)}];result.isFinal=true;
+ stale({results:[result]});assert.equal(t.state.completed,0);
+});
+test('interim transcript is visible but only a final result submits an answer',()=>{
+ const t=setup();t.nextQuestion();t.finishSpeech();const r=t.Rec.current;
+ r.onaudiostart();assert.equal(t.get('feedback-title').textContent,'请说出答案');
+ const answer=String(t.state.question.a*t.state.question.b);
+ const result=[{transcript:answer}];result.isFinal=false;r.onresult({results:[result]});
+ assert.equal(t.state.completed,0);assert.equal(t.state.attempts,0);
+ assert.ok(t.get('feedback-detail').textContent.includes(answer));
+ r.answer(answer);assert.equal(t.state.correct,1);
+});
+test('audio ending without a service result returns to keyboard input',()=>{
+ const t=setup();t.nextQuestion();t.finishSpeech();const r=t.Rec.current;
+ r.onaudiostart();r.onaudioend();t.tick(10000);
+ assert.equal(t.state.phase,'ready');assert.equal(t.state.attempts,0);assert.equal(t.get('answer').disabled,false);
+});
+test('network errors stop recognition and automatic retries without blocking manual retry',()=>{
+ const t=setup();t.nextQuestion();t.finishSpeech();const r=t.Rec.current;
+ r.onerror({error:'network'});
+ assert.equal(r.running,false);assert.equal(t.get('auto-voice').checked,false);
+ assert.equal(t.get('feedback-title').textContent,'连接不上语音识别服务');
+ assert.equal(t.state.attempts,0);assert.equal(t.get('listen').disabled,false);
+ t.listen();assert.equal(t.state.phase,'listening');
+});
+test('no-match event releases the microphone without spending an attempt',()=>{
+ const t=setup();t.nextQuestion();t.finishSpeech();const r=t.Rec.current;r.onnomatch();
+ assert.equal(r.running,false);assert.equal(t.state.phase,'ready');assert.equal(t.state.attempts,0);
+});
