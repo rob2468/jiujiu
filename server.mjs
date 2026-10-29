@@ -25,7 +25,7 @@ const server = createServer(async (req, res) => {
   const file = files.get(path);
   if (!file) { res.writeHead(404); res.end('Not found'); return; }
   try {
-    const bytes = await readFile(fileURLToPath(new URL(`./dist/${file[0]}`, import.meta.url)));
+    const bytes = await readFile(fileURLToPath(new URL(`./public/${file[0]}`, import.meta.url)));
     res.writeHead(200, {
       'Content-Type': file[1],
       'Content-Length': bytes.length,

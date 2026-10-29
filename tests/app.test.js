@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import {parseAnswer, makeDeck, assess} from '../dist/core.js';
+import {parseAnswer, makeDeck, assess} from '../public/core.js';
 function setup({recognition=true,speech=true}={}) {
  let now=0,nextId=0;const timers=new Map();
  class Element {constructor(){this.children=[];this.value='';this.checked=false;this.disabled=false;this.dataset={};this.events={};this.style={setProperty(){}};} addEventListener(n,f){this.events[n]=f;} setAttribute(n,v){this[n]=v;} replaceChildren(...c){this.children=c;} append(c){this.children.push(c);} }
@@ -13,7 +13,7 @@ function setup({recognition=true,speech=true}={}) {
  class Rec {static current=null;constructor(){Rec.current=this;} start(){assert.equal(synth.speaking,false,'synthesis must finish before listening');this.running=true;this.onstart?.();} abort(){this.running=false;} answer(text){this.running=false;const result=[{transcript:text}];result.isFinal=true;this.onresult?.({resultIndex:0,results:[result]});} }
  const window={SpeechRecognition:recognition?Rec:undefined,speechSynthesis:speech?synth:undefined,SpeechSynthesisUtterance:speech?class {constructor(text){this.text=text;}}:undefined,matchMedia:()=>({matches:true}),addEventListener(){}};
  const context={document,window,SpeechSynthesisUtterance:window.SpeechSynthesisUtterance,parseAnswer,makeDeck,assess,setTimeout(fn,ms){const id=++nextId;timers.set(id,{fn,at:now+ms});return id;},clearTimeout(id){timers.delete(id);},console};
- const source=fs.readFileSync(new URL('../dist/app.js',import.meta.url),'utf8').replace(/^import .*;\n/,'')+'\nglobalThis.appTest={state,nextQuestion,pause,listen,submitAnswer};';
+ const source=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8').replace(/^import .*;\n/,'')+'\nglobalThis.appTest={state,nextQuestion,pause,listen,submitAnswer};';
  vm.runInNewContext(source,context);
  function tick(ms){const until=now+ms;while(true){const entry=[...timers].filter(([,v])=>v.at<=until).sort((a,b)=>a[1].at-b[1].at)[0];if(!entry)break;now=entry[1].at;timers.delete(entry[0]);entry[1].fn();}now=until;}
  function finishSpeech(){const u=synth.current;assert.ok(u,'has speech');synth.current=null;synth.speaking=false;u.onend();tick(450);}

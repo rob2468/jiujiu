@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {parseAnswer, makeDeck, assess} from '../dist/core.js';
+import {parseAnswer, makeDeck, assess} from '../public/core.js';
 test('Chinese and Arabic spoken answers are normalized',()=>{
  for(const [input,n] of [['六',6],['十',10],['十一',11],['二十',20],['四十二',42],['答案是五十六。',56],['我的答案是八十一',81],['是 ４２',42],['两',2],['一二',12],['等于63',63],['0',0],['一百',100]]) assert.equal(parseAnswer(input),n,input);
 });

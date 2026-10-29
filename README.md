@@ -4,6 +4,8 @@
 
 ## 启动
 
+界面以手机竖屏练习为优先：题目、语音与数字键盘集中在单列练习区，手机数字键高度为 48px；桌面端提供双列布局。后续界面修改应先检查 320–430px 宽度下的触控和阅读体验，再检查平板与桌面布局。
+
 需要 Node.js 22 或更高版本、现代浏览器。无第三方依赖，不必执行 npm install。
 
 1. 进入 `jiujiu` 项目文件夹。
@@ -22,11 +24,11 @@ node server.mjs
 node server.mjs --port 5174
 ```
 
-服务仅监听本机回环地址，不会向局域网或互联网公开。不要直接双击 `dist/index.html`：页面使用 JavaScript 模块，需要通过本地 HTTP 服务打开。
+服务仅监听本机回环地址，不会向局域网或互联网公开。不要直接双击 `public/index.html`：页面使用 JavaScript 模块，需要通过本地 HTTP 服务打开。
 
 ## GitHub Pages 部署
 
-主分支为 `master`。仓库包含 `.github/workflows/pages.yml`，推送到 `master` 或手动运行工作流时，会先执行测试，再发布 `dist/`。
+主分支为 `master`。仓库包含 `.github/workflows/pages.yml`，推送到 `master` 或手动运行工作流时，会先执行测试，再发布 `public/`。
 
 首次部署时，在 GitHub 仓库的 Settings → Pages → Build and deployment 中，将 Source 设置为 GitHub Actions。GitHub Free 需要使用公开仓库；私有仓库需要支持 Pages 的付费套餐。
 
@@ -48,7 +50,8 @@ npm test
 
 ## 文件
 
-- `dist/`：完整 HTML、CSS、JavaScript 前端源码，无构建步骤。
+- `public/`：完整 HTML、CSS、JavaScript 前端源码，纳入 Git，无构建步骤。
+- `dist/`：预留给未来的构建产物，已加入 `.gitignore`；当前无需生成。
 - `server.mjs`：零第三方依赖的本机静态文件服务器。
 - `tests/`：题库、中文数字解析、三次重试和语音状态机测试。
 - `package.json`：启动和测试命令。
