@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f4f6f8">
-  <meta name="description" content="九九乘法练习，支持语音和数字键盘答题。">
+  <meta name="description" content="九九乘法练习，听题目，用数字键盘答题。">
   <title>九九乘法练习</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./style.css">
@@ -19,13 +19,11 @@
         <div class="question-bottom"><p id="question-hint">点击开始练习</p><button id="replay" disabled>再听一遍</button></div>
       </div>
       <div class="feedback" id="feedback" role="status" aria-live="polite">
-        <span id="feedback-icon" hidden></span>
         <strong id="feedback-title">准备好了吗？</strong>
         <p id="feedback-detail">点击“开始练习”，每题有三次机会。</p>
       </div>
       <div class="play-controls">
         <button id="start" class="primary-button"><span id="start-icon" hidden></span><span id="start-text">开始练习</span></button>
-        <button id="listen" class="mic-button" aria-label="用麦克风回答"><span id="listen-text">说答案</span></button>
       </div>
       <div class="input-area">
         <div class="input-label"><label for="answer">答案</label><div class="attempts"><span>剩余</span><strong id="attempt-count">3 次</strong><div id="chances" hidden><i></i><i></i><i></i></div></div></div>
@@ -40,19 +38,12 @@
           <button id="clear" class="key-secondary" disabled>清空</button><button data-digit="0" disabled>0</button><button id="backspace" class="key-secondary" aria-label="删除最后一位" disabled>删除</button>
         </div>
       </div>
-      <p id="voice-help" class="voice-help" hidden></p>
     </section>
     <div class="stats" aria-label="练习统计">
       <span>答对 <strong id="correct-count">0</strong></span>
       <span>完成 <strong id="completed-count">0</strong></span>
       <span>连对 <strong id="streak-count">0</strong></span>
     </div>
-    <details class="settings">
-      <summary>语音设置与说明</summary>
-      <label class="toggle-row"><span>自动听答案</span><input id="auto-voice" type="checkbox" checked></label>
-      <p id="support-note">首次使用需要允许麦克风权限。语音不可用时可用数字键盘。</p>
-      <p>本页面不保存录音和练习记录；刷新后统计清零。语音由浏览器处理，可能需要联网并发送至浏览器的语音服务。</p>
-    </details>
   </main>
   <script type="module" src="./app.js"></script>
 </body>

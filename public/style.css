@@ -13,11 +13,11 @@ header { display: flex; justify-content: space-between; align-items: center; min
 h1 { font-size: 22px; margin: 0; }
 header > span { font-size: 14px; color: #596b78; }
 button, input { font: inherit; }
-button, summary, .toggle-row { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; border: 0; border-radius: 12px; font-weight: 650; min-height: 52px; }
 button:disabled { opacity: .45; cursor: default; }
 button:not(:disabled):active { filter: brightness(.9); }
-button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
+button:focus-visible, input:focus-visible { outline: 3px solid #2563eb; outline-offset: 3px; }
 .question-zone { background: #dcecff; border-radius: 16px; padding: 16px; }
 .card-top { display: flex; justify-content: space-between; font-size: 13px; color: #3e5a72; }
 .equation { display: flex; justify-content: center; align-items: center; gap: clamp(8px, 3vw, 18px); font-size: clamp(44px, 13vw, 66px); font-weight: 750; line-height: 1.25; margin: 12px 0 4px; font-variant-numeric: tabular-nums; }
@@ -31,11 +31,9 @@ button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px 
 .feedback p { font-size: 13px; line-height: 1.5; color: #596b78; margin: 4px 0 0; }
 .feedback.success strong { color: #167449; }
 .feedback.retry strong, .feedback.reveal strong { color: #975014; }
-.play-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.play-controls { display: grid; grid-template-columns: 1fr; }
 .play-controls button { font-size: 18px; min-height: 56px; padding: 12px; }
 .primary-button, #submit { background: #167449; color: white; }
-.mic-button { background: #dcecff; color: #1855a4; }
-.mic-button.active { background: #1855a4; color: white; }
 .input-area { margin-top: 16px; }
 .input-label { display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px; }
 .attempts { display: flex; gap: 5px; color: #596b78; font-size: 13px; }
@@ -49,11 +47,6 @@ form { display: flex; gap: 10px; }
 .keypad .key-secondary { font-size: 16px; background: #e4e9ef; }
 .stats { display: flex; justify-content: space-around; padding: 16px 0; font-size: 14px; color: #596b78; }
 .stats strong { color: #172a3a; margin-left: 4px; font-variant-numeric: tabular-nums; }
-.settings { border-top: 1px solid #d4dce4; color: #596b78; font-size: 13px; line-height: 1.6; }
-.settings summary { min-height: 48px; padding: 14px 0; cursor: pointer; }
-.toggle-row { display: flex; justify-content: space-between; align-items: center; min-height: 48px; font-size: 16px; color: #172a3a; cursor: pointer; }
-.toggle-row input { width: 24px; height: 24px; accent-color: #167449; }
-.voice-help { font-size: 13px; line-height: 1.6; color: #596b78; margin: 12px 0 0; }
 @media (min-width: 600px) {
   main { padding-top: 24px; }
   .equation { font-size: 66px; }
